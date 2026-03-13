@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏幕共享</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050507;
+            --surface: #0c0c10;
+            --surface-2: #121218;
+            --surface-3: #1a1a22;
+            --surface-4: #22222c;
+            --border: #1e1e28;
+            --border-light: #2a2a36;
+            --accent: #00e8b8;
+            --accent-dark: #00c89e;
+            --accent-glow: rgba(0, 232, 184, 0.15);
+            --accent-dim: rgba(0, 232, 184, 0.08);
+            --danger: #ff4d5e;
+            --warning: #ffb830;
+            --success: #00e8b8;
+            --text: #e8e8f0;
+            --text-dim: #8888a8;
+            --text-muted: #505068;
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Noto Sans SC', system-ui, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 角色选择页 */
+        #role-select {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 2rem;
+            position: relative;
+            background:
+                radial-gradient(ellipse at 30% 20%, var(--accent-glow) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(100, 50, 200, 0.05) 0%, transparent 50%),
+                var(--bg);
+        }
+
+        .logo-section { margin-bottom: 2.5rem; }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .logo-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--bg);
+        }
+
+        .logo-text {
+            font-family: var(--mono);
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: -0.04em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(180deg, var(--text) 0%, var(--text-dim) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            letter-spacing: 0.03em;
+        }
+
+        .role-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            max-width: 520px;
+            width: 100%;
+        }
+
+        .role-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem 1.8rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .role-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .role-card:hover {
+            border-color: var(--accent);
+            background: var(--surface-2);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(0, 232, 184, 0.1);
+        }
+
+        .role-card:hover::before { opacity: 1; }
+
+        .role-card .icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 1.2rem;
+            color: var(--accent);
+        }
+
+        .role-card h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-card p {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            line-height: 1.65;
+        }
+
+        /* 控制面板 */
+        #control-panel {
+            display: none;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* 顶栏 */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            height: 48px;
+            min-height: 48px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .top-bar-center {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        /* 直播徽章 */
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.2rem 0.6rem;
+            background: var(--accent-dim);
+            border: 1px solid rgba(0, 232, 184, 0.2);
+            border-radius: 6px;
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: livePulse 1.5s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--accent); }
+            50% { opacity: 0.4; box-shadow: none; }
+        }
+
+        /* 统计面板 */
+        .stats-panel {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+        }
+
+        .stat-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .stat-value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .stat-value.good { color: var(--success); }
+        .stat-value.warn { color: var(--warning); }
+        .stat-value.bad { color: var(--danger); }
+
+        .stat-divider {
+            width: 1px;
+            height: 16px;
+            background: var(--border);
+        }
+
+        /* 按钮 */
+        .btn {
+            font-family: var(--sans);
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.4rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--surface-2);
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background: var(--surface-3);
+            border-color: var(--border-light);
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .btn-icon { padding: 0.4rem; }
+
+        .btn-danger {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 77, 94, 0.12);
+        }
+
+        /* 麦克风按钮 - 未开启时白色边框 */
+        .btn-mic { position: relative; }
+
+        .btn-mic:not(.active) {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-mic.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-mic.active:hover {
+            background: var(--accent-glow);
+        }
+
+        /* 观看者按钮 - 未激活时白色边框 */
+        #viewers-btn:not(.active-viewer) {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        #viewers-btn.active-viewer {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* 视频区域 */
+        .video-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-wrapper video {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        #local-preview { transform: scaleX(-1); }
+
+        /* 等待状态 */
+        .waiting-state {
+            text-align: center;
+            color: var(--text-dim);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1.2rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .waiting-state p {
+            font-size: 0.9rem;
+            letter-spacing: 0.02em;
+        }
+
+        /* 底栏 */
+        .bottom-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            height: 40px;
+            min-height: 40px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+        }
+
+        .bottom-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-family: var(--mono);
+            font-size: 0.68rem;
+            color: var(--text-dim);
+        }
+
+        .bottom-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        /* 地址显示 */
+        .address-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.3rem 0.6rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        .address-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .address-url {
+            font-size: 0.72rem;
+            color: var(--accent);
+            user-select: all;
+        }
+
+        .btn-copy {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.2rem;
+            display: flex;
+            transition: color 0.2s;
+        }
+
+        .btn-copy:hover { color: var(--accent); }
+
+        /* 观看者侧边栏 */
+        .viewer-sidebar {
+            position: fixed;
+            right: 0;
+            top: 48px;
+            bottom: 40px;
+            width: 260px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewer-sidebar.open { transform: translateX(0); }
+
+        .sidebar-header {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            letter-spacing: 0.03em;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.6rem;
+        }
+
+        .viewer-list-empty {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .viewer-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 0.6rem;
+            background: var(--surface-2);
+            border-radius: 8px;
+            margin-bottom: 0.4rem;
+        }
+
+        .viewer-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .viewer-item .id {
+            flex: 1;
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .viewer-item .mic-icon { color: var(--text-muted); }
+        .viewer-item .mic-icon.active { color: var(--accent); }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.7rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.82rem;
+            z-index: 2000;
+            animation: toastIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast-success { border-color: var(--success); color: var(--success); }
+        .toast-error { border-color: var(--danger); color: var(--danger); }
+
+        @keyframes toastIn {
+            from { transform: translateX(100%) scale(0.95); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 角色选择 -->
+    <div id="role-select">
+        <div class="logo-section">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <path d="M8 21h8M12 17v4"/>
+                    </svg>
+                </div>
+                <span class="logo-text">ScreenShare</span>
+            </div>
+            <h1 class="title">屏幕共享</h1>
+            <p class="subtitle">局域网低延迟广播 · 双向语音 · 实时监控</p>
+        </div>
+
+        <div class="role-cards">
+            <div class="role-card" onclick="startAsBroadcaster()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <path d="M8 21h8M12 17v4"/>
+                    <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <h3>开始广播</h3>
+                <p>共享屏幕画面和系统音频，开启麦克风与观看者实时语音交流</p>
+            </div>
+
+            <div class="role-card" onclick="startAsViewer()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <h3>观看广播</h3>
+                <p>观看屏幕共享画面，开启麦克风与广播者双向对话</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div id="control-panel">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <div class="live-badge" id="live-badge">
+                    <div class="live-dot"></div>
+                    <span id="live-text">LIVE</span>
+                </div>
+            </div>
+
+            <div class="top-bar-center">
+                <div class="stats-panel" id="stats-panel"></div>
+            </div>
+
+            <div class="top-bar-right">
+                <button class="btn btn-icon btn-mic" id="mic-btn" onclick="toggleMic()" title="麦克风">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                        <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
+
+                <button class="btn btn-icon" id="viewers-btn" onclick="toggleViewerPanel()" title="观看者" style="display:none">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 010 7.75"/>
+                    </svg>
+                    <span id="viewer-count" style="font-size:0.7rem;min-width:14px;text-align:center">0</span>
+                </button>
+
+                <button class="btn btn-danger" onclick="stopSession()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="6" width="12" height="12" rx="1"/>
+                    </svg>
+                    停止
+                </button>
+            </div>
+        </header>
+
+        <!-- 视频区域 -->
+        <div class="video-area" id="video-area">
+            <div class="video-wrapper" id="video-wrapper"></div>
+        </div>
+
+        <!-- 底栏 -->
+        <div class="bottom-bar">
+            <div class="bottom-bar-left" id="bottom-info"></div>
+            <div class="bottom-bar-right" id="bottom-actions"></div>
+        </div>
+
+        <!-- 观看者面板 -->
+        <div class="viewer-sidebar" id="viewer-sidebar">
+            <div class="sidebar-header">观看者列表</div>
+            <div class="sidebar-content" id="viewer-list">
+                <div class="viewer-list-empty">暂无观看者</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    // Socket.IO 连接
+    const socket = io();
+
+    // 会话状态
+    let currentRole = null;
+    let screenStream = null;
+    let micStream = null;
+    let micEnabled = false;
+    let peerConnections = new Map();
+    let viewers = new Set();
+    let viewerMicStatus = new Map();
+    let viewerPanelOpen = false;
+    let statsInterval = null;
+
+    // 统计数据
+    let localStats = {
+        fps: 0, bitrate: 0, resolution: '', codec: '',
+        packetLoss: 0, jitter: 0, rtt: 0
+    };
+
+    // DOM 引用
+    const $ = id => document.getElementById(id);
+    const roleSelect = $('role-select');
+    const controlPanel = $('control-panel');
+    const statsPanel = $('stats-panel');
+    const videoArea = $('video-area');
+    const videoWrapper = $('video-wrapper');
+    const micBtn = $('mic-btn');
+    const viewersBtn = $('viewers-btn');
+    const viewerCount = $('viewer-count');
+    const viewerSidebar = $('viewer-sidebar');
+    const viewerList = $('viewer-list');
+    const bottomInfo = $('bottom-info');
+    const bottomActions = $('bottom-actions');
+    const liveText = $('live-text');
+
+    // ========== 信令事件 ==========
+
+    socket.on('broadcaster-status', (data) => {
+        console.log('[广播状态]', data.active);
+    });
+
+    socket.on('viewer-joined', async (data) => {
+        viewers.add(data.viewerId);
+        await createOfferForViewer(data.viewerId);
+        updateViewerUI();
+    });
+
+    socket.on('viewer-left', (data) => {
+        viewers.delete(data.viewerId);
+        viewerMicStatus.delete(data.viewerId);
+        const pc = peerConnections.get(data.viewerId);
+        if (pc) { pc.close(); peerConnections.delete(data.viewerId); }
+        updateViewerUI();
+    });
+
+    socket.on('viewer-audio-status', (data) => {
+        viewerMicStatus.set(data.viewerId, data.enabled);
+        updateViewerUI();
+    });
+
+    socket.on('offer', async (data) => {
+        await handleOffer(data.from, data.offer);
+    });
+
+    socket.on('answer', async (data) => {
+        await handleAnswer(data.from, data.answer);
+    });
+
+    socket.on('ice-candidate', async (data) => {
+        const pc = peerConnections.get(data.from);
+        if (pc && data.candidate) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+            catch (e) { console.error('[ICE]', e); }
+        }
+    });
+
+    socket.on('broadcast-ended', () => {
+        if (currentRole === 'viewer') {
+            showToast('广播已结束', 'error');
+            resetSession();
+        }
+    });
+
+    socket.on('error', (msg) => showToast(msg, 'error'));
+
+    // ========== 广播者 ==========
+
+    async function startAsBroadcaster() {
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { frameRate: { ideal: 30, max: 30 }, cursor: 'always' },
+                audio: { echoCancellation: false, noiseSuppression: false, sampleRate: 48000 }
+            });
+
+            const videoTrack = screenStream.getVideoTracks()[0];
+            const settings = videoTrack.getSettings();
+            videoTrack.addEventListener('ended', stopSession);
+
+            currentRole = 'broadcaster';
+            socket.emit('start-broadcast', {
+                width: settings.width, height: settings.height, frameRate: settings.frameRate
+            });
+
+            showControlPanel('broadcaster');
+            liveText.textContent = 'BROADCASTING';
+
+            videoWrapper.innerHTML = '<video id="local-preview" autoplay muted playsinline></video>';
+            const video = $('local-preview');
+            video.srcObject = screenStream;
+            video.onloadedmetadata = () => {
+                fitVideoToArea(video);
+                startStatsMonitoring();
+            };
+
+            showAddressBar();
+            viewersBtn.style.display = 'flex';
+            showToast('广播已开始', 'success');
+        } catch (err) {
+            if (err.name !== 'NotAllowedError') {
+                showToast('无法获取屏幕权限', 'error');
+            }
+        }
+    }
+
+    // ========== 观看者 ==========
+
+    async function startAsViewer() {
+        currentRole = 'viewer';
+        socket.emit('join-as-viewer');
+        showControlPanel('viewer');
+        liveText.textContent = 'VIEWING';
+        videoWrapper.innerHTML = `
+            <div class="waiting-state">
+                <div class="spinner"></div>
+                <p>正在连接广播...</p>
+            </div>
+        `;
+    }
+
+    // ========== 视频适配 ==========
+
+    function fitVideoToArea(video) {
+        const areaRect = videoArea.getBoundingClientRect();
+        const areaW = areaRect.width - 40;
+        const areaH = areaRect.height - 40;
+        const videoW = video.videoWidth || 1920;
+        const videoH = video.videoHeight || 1080;
+        const scale = Math.min(areaW / videoW, areaH / videoH, 1);
+
+        video.style.width = Math.floor(videoW * scale) + 'px';
+        video.style.height = Math.floor(videoH * scale) + 'px';
+        localStats.resolution = `${videoW}x${videoH}`;
+        updateBottomInfo();
+    }
+
+    window.addEventListener('resize', () => {
+        const video = videoWrapper.querySelector('video');
+        if (video && video.videoWidth) fitVideoToArea(video);
+    });
+
+    // ========== 麦克风 ==========
+
+    async function toggleMic() {
+        micEnabled ? disableMic() : await enableMic();
+    }
+
+    async function enableMic() {
+        try {
+            micStream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 },
+                video: false
+            });
+
+            micEnabled = true;
+            micBtn.classList.add('active');
+
+            const audioTrack = micStream.getAudioTracks()[0];
+            for (const [id, pc] of peerConnections) {
+                pc.addTrack(audioTrack, micStream);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('offer', { target: id, offer: pc.localDescription });
+            }
+
+            socket.emit('viewer-audio-status', { enabled: true });
+            showToast('麦克风已开启', 'success');
+        } catch (err) {
+            showToast('无法访问麦克风', 'error');
+        }
+    }
+
+    function disableMic() {
+        if (micStream) {
+            micStream.getTracks().forEach(t => t.stop());
+            micStream = null;
+        }
+        micEnabled = false;
+        micBtn.classList.remove('active');
+        socket.emit('viewer-audio-status', { enabled: false });
+        showToast('麦克风已关闭');
+    }
+
+    // ========== WebRTC ==========
+
+    function createPeerConnection(peerId) {
+        const pc = new RTCPeerConnection({ iceServers: [], iceCandidatePoolSize: 0 });
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('ice-candidate', { target: peerId, candidate: event.candidate });
+            }
+        };
+
+        // 广播者添加屏幕流
+        if (currentRole === 'broadcaster' && screenStream) {
+            screenStream.getTracks().forEach(track => pc.addTrack(track, screenStream));
+            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) {
+                const params = sender.getParameters();
+                if (params.encodings?.length > 0) {
+                    params.encodings[0].maxBitrate = 4000000;
+                    params.encodings[0].maxFramerate = 30;
+                    sender.setParameters(params);
+                }
+            }
+        }
+
+        // 添加麦克风
+        if (micStream) {
+            micStream.getAudioTracks().forEach(track => pc.addTrack(track, micStream));
+        }
+
+        // 观看者接收流
+        if (currentRole === 'viewer') {
+            pc.ontrack = (event) => {
+                if (event.track.kind === 'video') {
+                    let video = $('remote-video');
+                    if (!video) {
+                        videoWrapper.innerHTML = '<video id="remote-video" autoplay playsinline></video>';
+                        video = $('remote-video');
+                    }
+                    video.srcObject = event.streams[0];
+                    video.onloadedmetadata = () => {
+                        fitVideoToArea(video);
+                        startStatsMonitoring();
+                    };
+                }
+                if (event.track.kind === 'audio') {
+                    let audio = $('remote-audio');
+                    if (!audio) {
+                        audio = document.createElement('audio');
+                        audio.id = 'remote-audio';
+                        audio.autoplay = true;
+                        audio.style.display = 'none';
+                        document.body.appendChild(audio);
+                    }
+                    audio.srcObject = event.streams[0];
+                }
+            };
+        }
+
+        peerConnections.set(peerId, pc);
+        return pc;
+    }
+
+    async function createOfferForViewer(viewerId) {
+        const pc = createPeerConnection(viewerId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('offer', { target: viewerId, offer: pc.localDescription });
+    }
+
+    async function handleOffer(from, offer) {
+        const existing = peerConnections.get(from);
+        if (existing) existing.close();
+
+        const pc = createPeerConnection(from);
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('answer', { target: from, answer: pc.localDescription });
+    }
+
+    async function handleAnswer(from, answer) {
+        const pc = peerConnections.get(from);
+        if (pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+    }
+
+    // ========== 统计监控 ==========
+
+    function startStatsMonitoring() {
+        if (statsInterval) clearInterval(statsInterval);
+
+        statsInterval = setInterval(async () => {
+            for (const [id, pc] of peerConnections) {
+                try {
+                    const report = await pc.getStats();
+                    report.forEach(stat => {
+                        if ((stat.type === 'inbound-rtp' || stat.type === 'outbound-rtp') && stat.kind === 'video') {
+                            localStats.fps = stat.framesPerSecond || 0;
+                            localStats.bitrate = stat.bytesSent || stat.bytesReceived || 0;
+                            localStats.packetLoss = stat.packetsLost || 0;
+                        }
+                        if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
+                            localStats.rtt = stat.currentRoundTripTime ? Math.round(stat.currentRoundTripTime * 1000) : 0;
+                        }
+                    });
+                } catch (e) {}
+                break;
+            }
+
+            updateStatsDisplay();
+            updateBottomInfo();
+
+            if (peerConnections.size > 0) {
+                const targetId = peerConnections.keys().next().value;
+                socket.emit('stats-report', { target: targetId, stats: localStats });
+            }
+        }, 1000);
+    }
+
+    function updateStatsDisplay() {
+        const bitrateMbps = (localStats.bitrate * 8 / 1000000).toFixed(1);
+        const bitrate = localStats.bitrate > 1000000
+            ? `${bitrateMbps} Mbps`
+            : `${Math.round(localStats.bitrate * 8 / 1000)} Kbps`;
+
+        const fpsClass = localStats.fps >= 25 ? 'good' : localStats.fps >= 15 ? 'warn' : 'bad';
+        const rttClass = localStats.rtt < 50 ? 'good' : localStats.rtt < 100 ? 'warn' : 'bad';
+
+        statsPanel.innerHTML = `
+            <div class="stat-group">
+                <span class="stat-label">FPS</span>
+                <span class="stat-value ${fpsClass}">${localStats.fps}</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-group">
+                <span class="stat-label">码率</span>
+                <span class="stat-value">${bitrate}</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-group">
+                <span class="stat-label">RTT</span>
+                <span class="stat-value ${rttClass}">${localStats.rtt}ms</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-group">
+                <span class="stat-label">丢包</span>
+                <span class="stat-value">${localStats.packetLoss}</span>
+            </div>
+        `;
+    }
+
+    function updateBottomInfo() {
+        const video = videoWrapper.querySelector('video');
+        const res = video ? `${video.videoWidth}x${video.videoHeight}` : localStats.resolution;
+        bottomInfo.innerHTML = `
+            <span>分辨率: ${res || '--'}</span>
+            <span>·</span>
+            <span>30fps</span>
+            <span>·</span>
+            <span>WebRTC P2P</span>
+        `;
+    }
+
+    // ========== UI ==========
+
+    function showControlPanel(role) {
+        roleSelect.style.display = 'none';
+        controlPanel.style.display = 'flex';
+        updateBottomInfo();
+    }
+
+    function showAddressBar() {
+        const url = window.location.origin;
+        bottomActions.innerHTML = `
+            <div class="address-display">
+                <span class="address-label">观看地址</span>
+                <span class="address-url">${url}</span>
+                <button class="btn-copy" onclick="copyUrl()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }
+
+    function updateViewerUI() {
+        viewerCount.textContent = viewers.size;
+        if (viewers.size === 0) {
+            viewerList.innerHTML = '<div class="viewer-list-empty">暂无观看者</div>';
+            return;
+        }
+
+        let html = '';
+        viewers.forEach(id => {
+            const micActive = viewerMicStatus.get(id);
+            html += `
+                <div class="viewer-item">
+                    <div class="dot"></div>
+                    <span class="id">${id.substring(0, 10)}</span>
+                    <span class="mic-icon ${micActive ? 'active' : ''}">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+                            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+                        </svg>
+                    </span>
+                </div>
+            `;
+        });
+        viewerList.innerHTML = html;
+    }
+
+    function toggleViewerPanel() {
+        viewerPanelOpen = !viewerPanelOpen;
+        viewerSidebar.classList.toggle('open', viewerPanelOpen);
+        viewersBtn.classList.toggle('active-viewer', viewerPanelOpen);
+    }
+
+    // ========== 工具 ==========
+
+    function stopSession() {
+        if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+        if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+        peerConnections.forEach(pc => pc.close());
+        peerConnections.clear();
+        if (currentRole === 'broadcaster') socket.emit('stop-broadcast');
+        if (statsInterval) clearInterval(statsInterval);
+        resetSession();
+    }
+
+    function resetSession() {
+        currentRole = null;
+        screenStream = null;
+        micStream = null;
+        micEnabled = false;
+        peerConnections.clear();
+        viewers.clear();
+        viewerMicStatus.clear();
+        localStats = { fps: 0, bitrate: 0, resolution: '', codec: '', packetLoss: 0, jitter: 0, rtt: 0 };
+
+        controlPanel.style.display = 'none';
+        roleSelect.style.display = 'flex';
+        viewerSidebar.classList.remove('open');
+        viewerPanelOpen = false;
+        micBtn.classList.remove('active');
+        viewersBtn.style.display = 'none';
+        viewersBtn.classList.remove('active-viewer');
+    }
+
+    function copyUrl() {
+        navigator.clipboard.writeText(window.location.origin);
+        showToast('已复制到剪贴板', 'success');
+    }
+
+    function showToast(msg, type = '') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type ? 'toast-' + type : ''}`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    window.addEventListener('beforeunload', stopSession);
+</script>
+</body>
+</html>
